@@ -1,0 +1,72 @@
+type Nat = restrict Int by (x:Int) => x >= 0
+type PosInt = restrict Nat by (x:Int) => x > 0
+
+type Rat = quotient (Int,PosInt) by
+    norm (a,b) = (a/d,b/d) where d : Nat = gcd(a,b)
+
+(+) ((a,b) : Rat) ((c,d) : Rat) : Rat = (a*d + b*c, b*d)
+(*) ((a,b) : Rat) ((c,d) : Rat) : Rat = (a*c, b*d)
+(-) ((a,b) : Rat) ((c,d) : Rat) : Rat = (a,b) + ((-c,d) : Rat)
+sgn ((a,b) : Rat) : Sign = sgn a
+(/) ((a,b) : Rat) ((c,d) : Rat) : Rat = ((sgn c)*a*d,abs (b*c))
+
+rec (step : T -> T) (x : T) : T = rec_til_match step x (step x) where
+    rec_til_match (step : T -> T) (x : T) (y : T) : T =
+        if x == y then
+            x
+        else
+            rec_til_match step y (step y)
+
+type {(R:Type) is Ring} Poly R = quotient [R] by
+    norm = rec step where
+        step (xs : Poly R) : Poly R = match xs
+            | [] => []
+            | [0] => []
+            | x::xs => x::step xs
+
+(+) (P : Poly R) (Q : Poly R) = // --snip--
+// ...
+
+gcd (P : Poly Rat) (Q : Poly Rat) =
+    if deg P < 0 then
+        normalised Q 
+    else
+        gcd Q (P%Q)
+    where normalised (P :)
+
+type {(R:Type) is Ring} NonConstantPoly R = restrict Poly R by (P : Poly R) => deg P > 0
+
+type {(R:Type) is Ring} IrreduciblePoly R = restrict Poly R by
+    (P : Poly R) => NEVER is_product where
+        is_product (Q1 : NonConstantPoly R, Q2 : NonConstantPoly) = Q1*Q2 == P
+
+type NumberField (P: IrreduciblePoly Rat) = quotient Poly Rat by
+    norm = (%P)
+
+X : Poly Rat = [0,1]
+cyclotomic (n : PosInt) : IrreduciblePoly Rat =
+    (product 
+        (map 
+            (filter 
+                (filter 
+                    (1..n) (divides n)
+                ) (fn x => mu x > 0)
+            ) (fn d => (X^(n/d) - 1)^(mu d))
+        )
+    )/(product
+        (map 
+            (filter 
+                (filter 
+                    (1..n) (divides n)
+                ) (fn x => mu x < 0)
+            ) (fn d => (X^(n/d) - 1)^(-mu d))
+        )
+    )
+
+type CyclotomicNumberField n = NumberField (cyclotomic n)
+
+i : CyclotomicNumberField 4 = [0,1]
+// --snip--
+
+DO
+print ((2*i + 3)/(4*i + 5))
